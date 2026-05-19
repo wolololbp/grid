@@ -122,6 +122,7 @@ class Game:
         self.locations = self._init_locations()
         self.weekly_events = self._init_weekly_events()
         self.story_scenes = self._init_story_scenes()
+        self.lexicon = self._init_lexicon()
 
         self._build_ui()
         self.show_background_select()
@@ -192,6 +193,31 @@ class Game:
             })
         return ev
 
+    def _init_lexicon(self) -> Dict[str, str]:
+        return {
+            "Undergrid": "Dense lower-class district where most survival politics begin.",
+            "Link Clinic": "Facility where people neural-link to AI for income at health/memory risk.",
+            "Black-Market Printroom": "Illegal media and forgery hub for propaganda and rumor operations.",
+            "Public Allocation Hall": "Bureaucratic rationing center for food, housing, and aid disputes.",
+            "Custodian Promenade": "Elite district of the Custodian class that privately owns AI infrastructure.",
+            "AI Maintenance Spire": "Critical technical tower where technicians keep automated systems running.",
+            "Police Civic Safety Office": "Security and intelligence bureaucracy managing surveillance and order.",
+            "Illegal School": "Underground education network building ideology, literacy, and civic culture.",
+            "Medical Distribution Center": "Node for medicine logistics and care continuity.",
+            "Abandoned Human Factory": "Symbolic old labor site used for organizing, memory, and escalation.",
+            "Salon of Cel Varo": "Elite salon where custodians, reformists, and brokers negotiate narratives.",
+            "Dream Layer": "Neural/AI liminal space of memory bleed, system messages, and Rune encounters.",
+            "Custodians": "Wealthy owner class controlling automated production and core AI systems.",
+            "Technicians": "Middle technical class maintaining AI uptime and vital infrastructure.",
+            "Rune": "Ambiguous AI-generated persona that may assist, manipulate, or test the player.",
+            "Police suspicion": "How likely authorities are to actively disrupt or expose your movement.",
+            "Legitimacy": "Perceived moral/public right of your leadership and political methods.",
+            "Worker support": "Backed support from lower-class residents and linked/unlinked workers.",
+            "AI uptime": "Percent of automated systems currently functioning.",
+            "Public unrest": "Intensity of society-wide instability and protest pressure.",
+            "Propaganda": "Messaging operations shaping support, fear, and political interpretation.",
+        }
+
     def _build_ui(self) -> None:
         top = tk.Frame(self.root, bg="#0d1320")
         top.pack(fill="x")
@@ -201,6 +227,8 @@ class Game:
         toolbar.pack(side="right")
         for lbl, cmd in [("Save", self.save), ("Load", self.load), ("Reset", self.reset)]:
             tk.Button(toolbar, text=lbl, command=cmd, bg="#314668", fg="white").pack(side="left", padx=4)
+        tk.Button(toolbar, text="Encyclopedia", command=self.show_encyclopedia, bg="#2a5a4a", fg="white").pack(side="left", padx=4)
+        tk.Button(toolbar, text="?", command=lambda: self.show_help("general"), bg="#4f5f80", fg="white", width=2).pack(side="left", padx=4)
 
         body = tk.Frame(self.root, bg="#121a2a")
         body.pack(fill="both", expand=True)
@@ -243,6 +271,56 @@ class Game:
         tk.Button(panels, text="Faction Dashboard", command=self.show_factions).pack(fill="x", pady=2)
         tk.Button(panels, text="Map", command=self.show_map).pack(fill="x", pady=2)
         tk.Button(panels, text="Revolution Readiness", command=self.show_revolution_readiness).pack(fill="x", pady=2)
+        tk.Button(panels, text="?", command=lambda: self.show_help("panels"), bg="#4f5f80", fg="white", width=3).pack(anchor="e", pady=2)
+
+    def show_help(self, topic: str) -> None:
+        if topic == "general":
+            message = (
+                "This game combines weekly strategy + branching narrative.\n"
+                "Use the Encyclopedia button for world terms, factions, and locations.\n"
+                "You usually get 3 actions per week; End Week advances systemic pressure."
+            )
+        elif topic == "panels":
+            message = (
+                "Relationships: visual trust graph.\n"
+                "Faction Dashboard: movement/faction status snapshot.\n"
+                "Map: graphical location selection.\n"
+                "Revolution Readiness: launch pressure vs resistance preview."
+            )
+        else:
+            message = self.lexicon.get(topic, f"No encyclopedia entry found for '{topic}'.")
+        messagebox.showinfo(f"Help: {topic}", message)
+
+    def show_encyclopedia(self) -> None:
+        win = tk.Toplevel(self.root)
+        win.title("Encyclopedia")
+        win.geometry("860x620")
+        container = tk.Frame(win, bg="#0f1728")
+        container.pack(fill="both", expand=True)
+        listbox = tk.Listbox(container, bg="#152038", fg="#eef3ff", font=("Helvetica", 10))
+        text = tk.Text(container, wrap="word", bg="#0c1426", fg="#dce9ff", font=("Helvetica", 10))
+        scroll = tk.Scrollbar(container, orient="vertical", command=listbox.yview)
+        listbox.configure(yscrollcommand=scroll.set)
+        scroll.pack(side="left", fill="y")
+        listbox.pack(side="left", fill="y", padx=6, pady=6)
+        text.pack(side="left", fill="both", expand=True, padx=6, pady=6)
+        for key in sorted(self.lexicon):
+            listbox.insert("end", key)
+
+        def _render(_: object = None) -> None:
+            sel = listbox.curselection()
+            if not sel:
+                return
+            key = listbox.get(sel[0])
+            text.config(state="normal")
+            text.delete("1.0", "end")
+            text.insert("end", f"{key}\n\n{self.lexicon.get(key, '')}")
+            text.config(state="disabled")
+
+        listbox.bind("<<ListboxSelect>>", _render)
+        if self.lexicon:
+            listbox.selection_set(0)
+            _render()
 
     def log(self, msg: str) -> None:
         self.story_text.config(state="normal")
@@ -351,6 +429,8 @@ class Game:
         canvas = tk.Canvas(map_win, bg="#0d1424", highlightthickness=0)
         canvas.pack(fill="both", expand=True)
         canvas.create_text(12, 12, anchor="nw", fill="#e8edf9", font=("Helvetica", 12, "bold"), text="Choose a location")
+        help_btn = tk.Button(map_win, text="?", command=lambda: self.show_help("Undergrid"), bg="#4f5f80", fg="white", width=2)
+        canvas.create_window(865, 22, window=help_btn, width=24, height=22)
 
         coords = {
             "Undergrid": (130, 430),
@@ -386,6 +466,8 @@ class Game:
             else:
                 btn = tk.Button(map_win, text="Visit", command=lambda l=loc, w=map_win: (w.destroy(), self.visit_location(l)), bg="#274066", fg="white")
                 canvas.create_window(x, y + 42, window=btn, width=58, height=18)
+            info_btn = tk.Button(map_win, text="?", command=lambda l=loc: self.show_help(l), bg="#4f5f80", fg="white", width=2)
+            canvas.create_window(x + 38, y - 30, window=info_btn, width=18, height=18)
 
         self.clear_choices()
         self.log("Choose a location to act this week.")
@@ -509,6 +591,8 @@ class Game:
         canvas = tk.Canvas(win, bg="#0c1322", highlightthickness=0)
         canvas.pack(fill="both", expand=True)
         canvas.create_text(14, 10, anchor="nw", fill="#edf3ff", font=("Helvetica", 12, "bold"), text="Friendship + Trust Network")
+        rel_help_btn = tk.Button(win, text="?", command=lambda: self.show_help("Technicians"), bg="#4f5f80", fg="white", width=2)
+        canvas.create_window(956, 20, window=rel_help_btn, width=20, height=20)
 
         chars = list(self.characters.values())
         n = len(chars)
@@ -524,13 +608,12 @@ class Game:
             if src not in positions:
                 continue
             sx, sy = positions[src]
+            known_targets = set(self.state.known_links.get(src, []))
             for t in targets:
-                if t not in positions:
+                if t not in positions or t not in known_targets:
                     continue
                 tx, ty = positions[t]
-                known = t in self.state.known_links.get(src, [])
-                color = "#5dc0ff" if known else "#2d3f63"
-                canvas.create_line(sx, sy, tx, ty, fill=color, width=2)
+                canvas.create_line(sx, sy, tx, ty, fill="#5dc0ff", width=2)
 
         for c in chars:
             x, y = positions[c.name]
@@ -545,8 +628,10 @@ class Game:
             # relationship bar
             canvas.create_rectangle(x - 24, y + 26, x + 24, y + 32, fill="#1d2942", outline="")
             canvas.create_rectangle(x - 24, y + 26, x - 24 + int((48 * rel) / 200), y + 32, fill="#9be37f", outline="")
+            info_btn = tk.Button(win, text="?", command=lambda n=c.name: self.show_help(n if n in self.lexicon else "general"), bg="#4f5f80", fg="white", width=2)
+            canvas.create_window(x + 32, y - 30, window=info_btn, width=18, height=18)
 
-        legend = "Blue edges: discovered hidden ties. Gray edges: unknown ties. Top bar: trust. Bottom bar: relationship."
+        legend = "Blue edges: discovered hidden ties only. Top bar: trust. Bottom bar: relationship."
         canvas.create_text(14, 686, anchor="sw", fill="#bfd2f2", font=("Helvetica", 9), text=legend)
 
     def show_factions(self) -> None:
@@ -573,12 +658,14 @@ class Game:
         s = self.state
         pressure = s.membership + s.worker_support + s.public_unrest + s.propaganda_reach + s.technician_support
         resistance = s.policing_intensity + s.custodian_confidence + s.police_suspicion + s.police_infiltration
-        if pressure < resistance - 20:
+        revolution_succeeds = pressure >= (resistance - 20)
+        if not revolution_succeeds:
             self.set_ending("Failed uprising")
             return
         s.phase = 3
         ai_shutdown = clamp(65 - (s.technician_support // 2) - (s.elite_sympathy // 3), 10, 75)
         s.ai_uptime = clamp(s.ai_uptime - ai_shutdown, 0, 100)
+        self.log("Revolution success confirmed. The old government fractures as control slips district by district.")
         self.log(f"Power transition begins. AI shutdown estimated at {ai_shutdown}% based on prior alliances.")
         self.governance_screen()
 
