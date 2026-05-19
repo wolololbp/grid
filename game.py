@@ -184,17 +184,38 @@ class Game:
         return scenes
 
     def _init_weekly_events(self) -> List[Dict[str, object]]:
-        ev = []
-        for i in range(1, 45):
-            ev.append({
-                "name": f"Weekly Pressure Event {i}",
-                "text": f"System shock {i}: shortages, rumors, and policy jolts alter social mood.",
-                "effects": {"public_unrest": self.rng.randint(1, 4), "police_suspicion": self.rng.randint(0, 3), "stress": self.rng.randint(0, 3)}
-            })
-        return ev
+        # Varied systemic shocks across infrastructure, class politics, information war, and governance stress.
+        return [
+            {"name": "Protein-Vat Contamination", "text": "A food biovats cluster fails contamination checks. Ration lines lengthen and rumors of elite stockpiles spread.", "effects": {"food_production": -8, "food_security": -6, "public_unrest": 4, "worker_support": 2}},
+            {"name": "Transit Grid Brownout", "text": "Rolling transit failures isolate districts for two days, disrupting medicine routing and organizer mobility.", "effects": {"energy_stability": -5, "medical_availability": -4, "stress": 3, "public_unrest": 3}},
+            {"name": "Custodian Dividend Gala", "text": "A leaked elite celebration during shortages spikes class anger and boosts recruitment conversations.", "effects": {"public_unrest": 5, "worker_support": 4, "custodian_reputation": -3, "public_reputation": 2}},
+            {"name": "Algorithmic Welfare Reclassification", "text": "Allocation systems reclassify thousands as low-priority claimants, triggering paperwork chaos.", "effects": {"housing_security": -5, "food_security": -4, "public_unrest": 4, "legitimacy": 1}},
+            {"name": "Police Metadata Sweep", "text": "Security authorities run a citywide metadata dragnet and freeze several shell wallets.", "effects": {"police_suspicion": 7, "police_infiltration": 4, "movement_funding": -6, "operational_secrecy": -4}},
+            {"name": "Medical Queue Surge", "text": "Critical care queues spike after a respiratory wave; triage rules ignite moral outrage.", "effects": {"medical_availability": -7, "health": -4, "public_unrest": 3, "empathy": 1}},
+            {"name": "Technician Walkout Threat", "text": "Maintenance crews threaten slowdown unless safety demands are met.", "effects": {"technician_support": 5, "ai_uptime": -5, "public_unrest": 2, "elite_sympathy": -1}},
+            {"name": "Deepfake Scandal", "text": "Competing factions weaponize deepfakes; trust in public messages drops across the city.", "effects": {"message_discipline": -6, "public_reputation": -3, "police_suspicion": 2, "propaganda_reach": -2}},
+            {"name": "Black-Market Credit Squeeze", "text": "Loan sharks tighten terms and collateral violence rises in peripheral blocks.", "effects": {"money": -8, "black_market_activity": 6, "stress": 4, "public_unrest": 2}},
+            {"name": "Dock Strike at Allocation Port", "text": "Dock allocators halt distribution software handoffs, exposing logistics fragility.", "effects": {"food_network_access": -4, "energy_network_access": -3, "membership": 2, "public_unrest": 4}},
+            {"name": "Elite Defection Rumor", "text": "Whispers that a mid-tier custodian wants immunity in exchange for records.", "effects": {"elite_sympathy": 4, "internal_unity": -3, "police_suspicion": 1, "movement_funding": 3}},
+            {"name": "Neighborhood Mutual Aid Boom", "text": "Local kitchens and clinics self-organize faster than official channels.", "effects": {"food_security": 5, "health": 3, "public_sympathy": 4, "legitimacy": 3}},
+            {"name": "Censorship Patch Rollout", "text": "Platform moderation firmware flags political speech as instability content.", "effects": {"censorship_level": 8, "propaganda_reach": -4, "police_suspicion": 2, "public_unrest": 2}},
+            {"name": "Heatwave Load Emergency", "text": "Extreme heat drives grid demand beyond forecasts and triggers emergency rationing.", "effects": {"energy_stability": -7, "health": -3, "stress": 4, "public_unrest": 3}},
+            {"name": "Memory Drift Cases Rise", "text": "Clinicians report increasing cognitive drift among linked workers, renewing ethical panic.", "effects": {"memory_integrity": -6, "neural_stability": -5, "public_unrest": 3, "legitimacy": 2}},
+            {"name": "Counter-Propaganda Offensive", "text": "State media launches a coordinated narrative framing organizers as famine profiteers.", "effects": {"public_reputation": -5, "trust_in_player": -4, "worker_support": -2, "police_suspicion": 3}},
+            {"name": "Spire Maintenance Breakthrough", "text": "Engineers deploy a robust patch that stabilizes routing efficiency for several cycles.", "effects": {"ai_uptime": 6, "energy_stability": 4, "technician_support": 3, "custodian_confidence": 2}},
+            {"name": "Audit Leak from Civic Safety", "text": "Internal audit files expose manipulated arrest quotas and fabricated risk tags.", "effects": {"policing_intensity": -4, "public_unrest": 5, "worker_support": 3, "police_suspicion": -1}},
+            {"name": "Undergrid Fire Cascade", "text": "A tenement fire reveals deferred infrastructure maintenance and poor emergency access.", "effects": {"housing_stability": -8, "health": -4, "public_unrest": 4, "legitimacy": 2}},
+            {"name": "Emergency Grain Import", "text": "External emergency shipments temporarily ease pressure in ration districts.", "effects": {"food_production": 4, "food_security": 6, "public_unrest": -2, "international_attention": 3}},
+        ]
 
     def _init_lexicon(self) -> Dict[str, str]:
         return {
+            "general": "Core help for navigating weekly actions, systems pressure, and branching outcomes.",
+            "panels": "Overview of utility panels: Relationships, Faction Dashboard, Map, and Revolution Readiness.",
+            "relationships_tab": "Visual social graph of characters. Links appear only when hidden ties are discovered.",
+            "map_tab": "Graphical city map of districts and institutions. Locked areas require social or material access.",
+            "factions_tab": "Snapshot of faction/class momentum shaping transition outcomes.",
+            "revolution_readiness_tab": "Compares movement pressure to state resistance before launch.",
             "Undergrid": "Dense lower-class district where most survival politics begin.",
             "Link Clinic": "Facility where people neural-link to AI for income at health/memory risk.",
             "Black-Market Printroom": "Illegal media and forgery hub for propaganda and rumor operations.",
@@ -209,7 +230,26 @@ class Game:
             "Dream Layer": "Neural/AI liminal space of memory bleed, system messages, and Rune encounters.",
             "Custodians": "Wealthy owner class controlling automated production and core AI systems.",
             "Technicians": "Middle technical class maintaining AI uptime and vital infrastructure.",
+            "Mara Venn": "Lower-grid organizer favoring rupture; fears collapse if technical continuity is ignored.",
+            "Elias Rook": "Affluent AI maintenance architect who can fund transition and reduce shutdown risk.",
+            "Sera Quill": "Custodian heir balancing class continuity, legitimacy, and private doubt.",
+            "Juno Pike": "Black-market narrative operator who boosts reach but can destabilize message discipline.",
+            "Inspector Cal Vey": "Security strategist who equates unmanaged unrest with famine risk.",
+            "Nadi Bex": "Linked child whose condition embodies coercion through survival dependency.",
+            "Tomas Vale": "Older resident prioritizing stability after prior social breakdowns.",
+            "Iri Sol": "Radical theorist pressing immediate abolition of AI ownership structures.",
+            "Director Halden Myr": "Custodian power broker arguing elite control is necessary for continuity.",
+            "Lysa Tem": "Medical technician focused on care continuity under political transition.",
+            "Olan Crete": "Logistics smuggler; useful but transactional in loyalty.",
+            "Faye Orison": "Underground educator emphasizing democratic culture and anti-revenge politics.",
+            "Malik Drem": "Former regime media figure skilled in persuasion and narrative manipulation.",
+            "Ansel Kade": "Militant leader whose grief can sharpen mobilization and escalation.",
+            "Priya Sen": "Systems engineer advocating decentralized, auditable AI governance.",
             "Rune": "Ambiguous AI-generated persona that may assist, manipulate, or test the player.",
+            "Cel Varo": "Elite salon broker connecting custodians, reformists, and opportunists.",
+            "Bet Orra": "Grieving lower-grid parent measuring politics by civilian protection outcomes.",
+            "Kemi Draal": "Allocator managing distribution chokepoints in stressed supply systems.",
+            "Harl Nox": "Custodian security consultant favoring hard containment over compromise.",
             "Police suspicion": "How likely authorities are to actively disrupt or expose your movement.",
             "Legitimacy": "Perceived moral/public right of your leadership and political methods.",
             "Worker support": "Backed support from lower-class residents and linked/unlinked workers.",
@@ -241,6 +281,7 @@ class Game:
         self.story_text = tk.Text(self.left, wrap="word", bg="#182235", fg="#d9f0da", font=("Consolas", 11))
         self.story_text.pack(fill="both", expand=True, padx=8, pady=8)
         self.story_text.config(state="disabled")
+        self.content_canvas = tk.Canvas(self.left, bg="#0d1424", highlightthickness=0)
 
         # Scrollable choices panel so long option lists (e.g., conversations) remain usable.
         self.choice_container = tk.Frame(self.left, bg="#121a2a")
@@ -267,10 +308,25 @@ class Game:
 
         panels = tk.Frame(self.right, bg="#121a2a")
         panels.pack(fill="x", padx=8, pady=4)
-        tk.Button(panels, text="Relationships", command=self.show_relationships).pack(fill="x", pady=2)
-        tk.Button(panels, text="Faction Dashboard", command=self.show_factions).pack(fill="x", pady=2)
-        tk.Button(panels, text="Map", command=self.show_map).pack(fill="x", pady=2)
-        tk.Button(panels, text="Revolution Readiness", command=self.show_revolution_readiness).pack(fill="x", pady=2)
+        row1 = tk.Frame(panels, bg="#121a2a")
+        row1.pack(fill="x", pady=2)
+        tk.Button(row1, text="Relationships", command=self.show_relationships).pack(side="left", fill="x", expand=True)
+        tk.Button(row1, text="?", command=lambda: self.show_help("relationships_tab"), bg="#4f5f80", fg="white", width=3).pack(side="left", padx=3)
+
+        row2 = tk.Frame(panels, bg="#121a2a")
+        row2.pack(fill="x", pady=2)
+        tk.Button(row2, text="Faction Dashboard", command=self.show_factions).pack(side="left", fill="x", expand=True)
+        tk.Button(row2, text="?", command=lambda: self.show_help("factions_tab"), bg="#4f5f80", fg="white", width=3).pack(side="left", padx=3)
+
+        row3 = tk.Frame(panels, bg="#121a2a")
+        row3.pack(fill="x", pady=2)
+        tk.Button(row3, text="Map", command=self.show_map).pack(side="left", fill="x", expand=True)
+        tk.Button(row3, text="?", command=lambda: self.show_help("map_tab"), bg="#4f5f80", fg="white", width=3).pack(side="left", padx=3)
+
+        row4 = tk.Frame(panels, bg="#121a2a")
+        row4.pack(fill="x", pady=2)
+        tk.Button(row4, text="Revolution Readiness", command=self.show_revolution_readiness).pack(side="left", fill="x", expand=True)
+        tk.Button(row4, text="?", command=lambda: self.show_help("revolution_readiness_tab"), bg="#4f5f80", fg="white", width=3).pack(side="left", padx=3)
         tk.Button(panels, text="?", command=lambda: self.show_help("panels"), bg="#4f5f80", fg="white", width=3).pack(anchor="e", pady=2)
 
     def show_help(self, topic: str) -> None:
@@ -323,6 +379,9 @@ class Game:
             _render()
 
     def log(self, msg: str) -> None:
+        if self.content_canvas.winfo_ismapped():
+            self.content_canvas.pack_forget()
+            self.story_text.pack(fill="both", expand=True, padx=8, pady=8)
         self.story_text.config(state="normal")
         self.story_text.insert("end", msg + "\n\n")
         self.story_text.see("end")
@@ -375,6 +434,19 @@ class Game:
             child.destroy()
         self.choice_canvas.yview_moveto(0)
 
+    def show_console_view(self) -> None:
+        if self.content_canvas.winfo_ismapped():
+            self.content_canvas.pack_forget()
+        if not self.story_text.winfo_ismapped():
+            self.story_text.pack(fill="both", expand=True, padx=8, pady=8)
+
+    def show_canvas_view(self) -> None:
+        if self.story_text.winfo_ismapped():
+            self.story_text.pack_forget()
+        if not self.content_canvas.winfo_ismapped():
+            self.content_canvas.pack(fill="both", expand=True, padx=8, pady=8)
+        self.content_canvas.delete("all")
+
     def add_choice(self, text: str, cb: Callable[[], None], locked: Optional[str] = None) -> None:
         label = text if not locked else f"🔒 {text} ({locked})"
         state = "normal" if not locked else "disabled"
@@ -409,6 +481,7 @@ class Game:
         self.main_week_screen()
 
     def main_week_screen(self) -> None:
+        self.show_console_view()
         self.refresh_stats()
         self.clear_choices()
         no_actions = self.state.actions_left <= 0
@@ -420,16 +493,10 @@ class Game:
         self.add_choice("End week", self.end_week)
 
     def show_map(self) -> None:
-        self.show_map_window()
-
-    def show_map_window(self) -> None:
-        map_win = tk.Toplevel(self.root)
-        map_win.title("City Map")
-        map_win.geometry("900x620")
-        canvas = tk.Canvas(map_win, bg="#0d1424", highlightthickness=0)
-        canvas.pack(fill="both", expand=True)
+        self.show_canvas_view()
+        canvas = self.content_canvas
         canvas.create_text(12, 12, anchor="nw", fill="#e8edf9", font=("Helvetica", 12, "bold"), text="Choose a location")
-        help_btn = tk.Button(map_win, text="?", command=lambda: self.show_help("Undergrid"), bg="#4f5f80", fg="white", width=2)
+        help_btn = tk.Button(self.left, text="?", command=lambda: self.show_help("map_tab"), bg="#4f5f80", fg="white", width=2)
         canvas.create_window(865, 22, window=help_btn, width=24, height=22)
 
         coords = {
@@ -464,21 +531,13 @@ class Game:
             if locked:
                 canvas.create_text(x, y + 42, fill="#ffb0b0", text=locked, font=("Helvetica", 7))
             else:
-                btn = tk.Button(map_win, text="Visit", command=lambda l=loc, w=map_win: (w.destroy(), self.visit_location(l)), bg="#274066", fg="white")
+                btn = tk.Button(self.left, text="Visit", command=lambda l=loc: self.visit_location(l), bg="#274066", fg="white")
                 canvas.create_window(x, y + 42, window=btn, width=58, height=18)
-            info_btn = tk.Button(map_win, text="?", command=lambda l=loc: self.show_help(l), bg="#4f5f80", fg="white", width=2)
+            info_btn = tk.Button(self.left, text="?", command=lambda l=loc: self.show_help(l), bg="#4f5f80", fg="white", width=2)
             canvas.create_window(x + 38, y - 30, window=info_btn, width=18, height=18)
 
         self.clear_choices()
-        self.log("Choose a location to act this week.")
-        for loc in self.locations:
-            locked = None
-            if loc in {"Custodian Promenade", "Salon of Cel Varo"} and self.state.money < 40 and self.characters["Cel Varo"].trust < 20:
-                locked = "need money or elite access"
-            if loc == "Dream Layer" and self.state.background != "Neural-linked worker" and self.characters["Rune"].trust < 10:
-                locked = "need link or Rune trust"
-            self.add_choice(loc, lambda l=loc: self.visit_location(l), locked)
-        self.add_choice("Back", self.main_week_screen)
+        self.add_choice("Back to Console", self.main_week_screen)
 
     def visit_location(self, loc: str) -> None:
         if not self.spend_action():
@@ -585,13 +644,10 @@ class Game:
         self.main_week_screen()
 
     def show_relationships(self) -> None:
-        win = tk.Toplevel(self.root)
-        win.title("Relationship Network")
-        win.geometry("980x720")
-        canvas = tk.Canvas(win, bg="#0c1322", highlightthickness=0)
-        canvas.pack(fill="both", expand=True)
+        self.show_canvas_view()
+        canvas = self.content_canvas
         canvas.create_text(14, 10, anchor="nw", fill="#edf3ff", font=("Helvetica", 12, "bold"), text="Friendship + Trust Network")
-        rel_help_btn = tk.Button(win, text="?", command=lambda: self.show_help("Technicians"), bg="#4f5f80", fg="white", width=2)
+        rel_help_btn = tk.Button(self.left, text="?", command=lambda: self.show_help("relationships_tab"), bg="#4f5f80", fg="white", width=2)
         canvas.create_window(956, 20, window=rel_help_btn, width=20, height=20)
 
         chars = list(self.characters.values())
@@ -628,11 +684,13 @@ class Game:
             # relationship bar
             canvas.create_rectangle(x - 24, y + 26, x + 24, y + 32, fill="#1d2942", outline="")
             canvas.create_rectangle(x - 24, y + 26, x - 24 + int((48 * rel) / 200), y + 32, fill="#9be37f", outline="")
-            info_btn = tk.Button(win, text="?", command=lambda n=c.name: self.show_help(n if n in self.lexicon else "general"), bg="#4f5f80", fg="white", width=2)
+            info_btn = tk.Button(self.left, text="?", command=lambda n=c.name: self.show_help(n if n in self.lexicon else "general"), bg="#4f5f80", fg="white", width=2)
             canvas.create_window(x + 32, y - 30, window=info_btn, width=18, height=18)
 
         legend = "Blue edges: discovered hidden ties only. Top bar: trust. Bottom bar: relationship."
         canvas.create_text(14, 686, anchor="sw", fill="#bfd2f2", font=("Helvetica", 9), text=legend)
+        self.clear_choices()
+        self.add_choice("Back to Console", self.main_week_screen)
 
     def show_factions(self) -> None:
         s = self.state
