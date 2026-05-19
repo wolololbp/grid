@@ -1,17 +1,15 @@
 # Ashes & Circuits
 
-Graphical narrative-simulation game (Python + Tkinter) with long-form weekly progression.
+A data-driven graphical political/social simulation + branching visual novel game built with Python/Tkinter.
 
 ## Features
-- 3-phase campaign loop: survival, organization, governance.
-- 8+ chapter beats over 40-60 weeks.
-- 18 major characters with hidden links.
-- 12-map location system with class barriers.
-- Weekly action economy, propaganda system, surveillance pressure, relationship scenes.
-- Revolution readiness and multiple transition paths.
-- Post-revolution government + economic model choices.
-- 12+ distinct ending outcomes based on systemic stats.
-- Save/Load/Reset with JSON persistence (`savegame.json`).
+- 3-phase campaign loop (survival, organization, governance) spanning 40-60 weeks.
+- 8 major arcs with event-driven story progression and systemic simulation.
+- 20 major characters with relationship/trust/resentment dynamics and hidden links.
+- 12+ endings via governance and revolution outcomes.
+- 12 locations with class barriers and different action risks/rewards.
+- Weekly action economy + random pressure events.
+- Save/load/reset + autosafe state model (JSON-serializable game state).
 
 ## Run
 ```bash
@@ -19,10 +17,8 @@ python3 game.py
 ```
 
 ## Notes for extending content
-`game.py` is data-driven around:
-- `make_characters()` for cast and hidden links.
-- `LOCATIONS` + `visit()` for location mechanics.
-- `random_weekly_event()` for weekly content/event volume.
-- `determine_ending()` for ending logic.
-
-Add more events/scenes by expanding those structured lists and handlers.
+- Add scenes in `_init_story_scenes`.
+- Add weekly systemic events in `_init_weekly_events`.
+- Add new characters in `_init_characters`.
+- Add location effects in `visit_location`.
+- Add more propaganda combinations in `propaganda_menu`.
