@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ashes & Circuits: data-driven graphical narrative simulation."""
+"""GRID Final Project Game: data-driven graphical narrative simulation."""
 from __future__ import annotations
 
 import json
@@ -165,7 +165,7 @@ class WarState:
 class Game:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("Ashes & Circuits")
+        self.root.title("GRID Final Project Game")
         self.root.geometry("1360x860")
         self.rng = random.Random(7)
         self.state = GameState()
@@ -315,7 +315,7 @@ class Game:
     def _build_ui(self) -> None:
         top = tk.Frame(self.root, bg="#0d1320")
         top.pack(fill="x")
-        tk.Label(top, text="Ashes & Circuits", font=("Helvetica", 18, "bold"), fg="white", bg="#0d1320").pack(side="left", padx=12, pady=8)
+        tk.Label(top, text="GRID Final Project Game", font=("Helvetica", 18, "bold"), fg="white", bg="#0d1320").pack(side="left", padx=12, pady=8)
 
         toolbar = tk.Frame(top, bg="#0d1320")
         toolbar.pack(side="right")
