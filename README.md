@@ -1,4 +1,4 @@
-# Ashes & Circuits
+# GRID Final Project Game
 
 A data-driven graphical political/social simulation + branching visual novel game built with Python/Tkinter.
 
