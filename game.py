@@ -501,14 +501,14 @@ class Game:
             self.add_choice("Major: Encourage elite defections", lambda: self.war_action('defect'))
             self.add_choice("Major: Protect medical centers", lambda: self.war_action('medical'))
             self.add_choice("Major: Centralize command", lambda: self.war_action('centralize'))
-            self.add_choice("Major: Hardline sweep", lambda: self.war_action('hardline_sweep'))
-            self.add_choice("Major: Ruthless escalation", lambda: self.war_action('ruthless_escalation'))
+            self.add_choice("Major: Ruthless purge operation", lambda: self.war_action('purge'))
         if ws.minor_actions_left>0:
             self.add_choice("Minor: Emergency propaganda", lambda: self.war_action('propaganda',minor=True))
             self.add_choice("Minor: Counter police raids", lambda: self.war_action('counter_raid',minor=True))
             self.add_choice("Minor: Public assemblies", lambda: self.war_action('assemblies',minor=True))
             self.add_choice("Minor: Restrain radicals", lambda: self.war_action('restrain',minor=True))
             self.add_choice("Minor: Negotiate ceasefire corridor", lambda: self.war_action('ceasefire',minor=True))
+            self.add_choice("Minor: Brutal reprisals", lambda: self.war_action('reprisal',minor=True))
         self.add_choice("Resolve War Week", self.resolve_war_week)
         self.add_choice("Back to Console", self.main_week_screen)
 
@@ -526,13 +526,13 @@ class Game:
             'defect': {'elite_defection':5,'custodian_morale':-5,'internal_unity':-2,'negotiation_leverage':3},
             'medical': {'medical_reserves':3,'casualties':-3,'legitimacy':3,'pressure':-1},
             'centralize': {'pressure':3,'internal_unity':2,'legitimacy':-3,'civilian_fear':3},
-            'hardline_sweep': {'pressure':7,'custodian_morale':-5,'police_cohesion':-3,'casualties':4,'legitimacy':-4,'violence_level':3},
-            'ruthless_escalation': {'pressure':9,'momentum':5,'civilian_fear':6,'casualties':6,'legitimacy':-6,'violence_level':6,'radical_pressure':3},
+            'purge': {'pressure':7,'police_cohesion':-4,'civilian_fear':6,'casualties':4,'legitimacy':-6,'violence_level':8},
             'propaganda': {'propaganda_reach':3,'public_sympathy':2,'pressure':1},
             'counter_raid': {'police_cohesion':-2,'safehouses':1,'betrayal_risk':-2},
             'assemblies': {'legitimacy':4,'civilian_trust':3,'pressure':-1},
             'restrain': {'radical_pressure':-3,'legitimacy':2,'pressure':-1},
             'ceasefire': {'food_reserves':2,'medical_reserves':2,'pressure':-2,'negotiation_leverage':2},
+            'reprisal': {'pressure':3,'police_cohesion':-2,'civilian_fear':3,'legitimacy':-3,'violence_level':4},
         }[action]
         for k,v in effects.items():
             setattr(ws,k,clamp(getattr(ws,k)+v,-100,200))
@@ -568,8 +568,14 @@ class Game:
         ws.pressure=clamp(ws.pressure + ws.radical_pressure//20 + ws.revolutionary_morale//25 - ws.casualties//20,0,100)
         ws.legitimacy=clamp(ws.legitimacy + ws.civilian_trust//25 - ws.civilian_fear//20 - ws.violence_level//30,0,100)
         ws.momentum=clamp((ws.pressure+ws.legitimacy+ws.revolutionary_morale)//3 - ws.police_cohesion//8,0,100)
-        effective_ruthlessness = (ws.violence_level + ws.radical_pressure + ws.pressure) // 3
-        if ws.week >= 5 and ws.pressure < 38 and effective_ruthlessness < 24:
+        required_ruthlessness = 20 + ws.week * 2
+        if ws.week >= 4 and ws.violence_level < required_ruthlessness:
+            ws.active = False
+            self.state.flags['war_outcome'] = 'Failed uprising'
+            self.log(
+                f"War failed: command judged insufficiently ruthless "
+                f"(violence {ws.violence_level} < required {required_ruthlessness})."
+            )
             self.set_ending('Failed uprising')
             return
         # outcome checks
@@ -987,23 +993,30 @@ class Game:
         self.clear_choices()
         targets = ["lower class", "technicians", "custodians", "police", "linked workers", "neutral public"]
         tones = ["moral appeal", "economic argument", "personal testimony", "satire", "outrage", "technical critique", "reconciliation"]
-        methods = ["pamphlets", "hacked feeds", "speeches", "rumors", "art", "civic school", "salon leaks", "neural dreams"]
+        methods = ["pamphlets", "hacked feeds", "speeches", "rumors", "art", "illegal school", "salon leaks", "neural dreams"]
+        if self.war_state and self.war_state.active:
+            violence_profiles = [("low-risk messaging", -1), ("hardline messaging", 2), ("incitement messaging", 5)]
+        else:
+            violence_profiles = [("calming messaging", -2), ("aggressive messaging", 1), ("threat messaging", 3)]
         for t in targets[:3]:
             for tone in tones[:2]:
-                
-                for label, vdelta in [("de-escalatory", -2), ("assertive", 1), ("hardline", 4)]:
+                method = methods[self.rng.randint(0,7)]
+                for profile_name, profile_shift in violence_profiles:
                     self.add_choice(
-                        f"{t} via {methods[self.rng.randint(0,7)]} ({tone}, {label})",
-                        lambda x=t, y=tone, vd=vdelta: self.propaganda_action(x, y, vd),
+                        f"{t} via {method} ({tone}, {profile_name})",
+                        lambda x=t, y=tone, z=profile_shift, p=profile_name: self.propaganda_action(x, y, z, p),
                     )
         self.add_choice("Back", self.main_week_screen)
 
-    def propaganda_action(self, target: str, tone: str, violence_delta: int) -> None:
+    def propaganda_action(self, target: str, tone: str, violence_shift: int, profile_name: str) -> None:
         if not self.spend_action():
             self.main_week_screen()
             return
         reach = 4 + self.state.propaganda_skill // 20
         suspicion = 2
+        applied_violence_shift = violence_shift
+        if self.war_state and self.war_state.active:
+            applied_violence_shift = clamp(violence_shift, -1, 2)
         if tone in {"outrage", "satire"}:
             self.state.radicalization += 3
             self.state.message_discipline -= 2
@@ -1016,13 +1029,20 @@ class Game:
         if target == "technicians":
             self.state.technician_support += 3
             self.state.ai_uptime += 1
-        self.state.violence_level = clamp(self.state.violence_level + violence_delta, 0, 100)
-        if violence_delta <= 0:
-            self.state.flags["peaceful_propaganda_used_this_week"] = True
-        else:
-            self.state.flags["non_peaceful_propaganda_used_this_week"] = True
-        self.apply_effects({"propaganda_reach": reach, "public_reputation": 2, "police_suspicion": suspicion})
-        self.log(f"Propaganda deployed: target={target}, tone={tone}, intensity={violence_delta:+}. Reach grows with strategic side effects.")
+        self.apply_effects({
+            "propaganda_reach": reach,
+            "public_reputation": 2,
+            "police_suspicion": suspicion,
+            "violence_level": applied_violence_shift,
+            "ruthlessness": max(0, applied_violence_shift),
+        })
+        if self.war_state and self.war_state.active:
+            self.war_state.violence_level = clamp(self.war_state.violence_level + applied_violence_shift, 0, 100)
+            self.war_state.radical_pressure = clamp(self.war_state.radical_pressure + max(0, applied_violence_shift), 0, 100)
+        self.log(
+            f"Propaganda deployed: target={target}, tone={tone}, profile={profile_name}. "
+            f"Violence shift {applied_violence_shift}."
+        )
         self.main_week_screen()
 
     def movement_menu(self) -> None:
