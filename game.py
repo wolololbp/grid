@@ -12,6 +12,9 @@ from tkinter import messagebox
 from typing import Callable, Dict, List, Optional, Tuple
 
 SAVE_PATH = Path("savegame.json")
+LINKING_DEATHS_PER_WEEK = 3000
+REVOLUTION_HORIZON_WEEKS = 40
+WAR_CASUALTY_UNIT = 1000
 
 
 def clamp(v: int, lo: int, hi: int) -> int:
@@ -222,9 +225,9 @@ class Game:
 
     def _init_locations(self) -> Dict[str, Dict[str, str]]:
         names = [
-            "Undergrid", "Link Clinic", "Black-Market Printroom", "Public Allocation Hall",
+            "Undergrid", "Link Clinic", "Public Print Station", "Public Allocation Hall",
             "Custodian Promenade", "AI Maintenance Spire", "Police Civic Safety Office",
-            "Illegal School", "Medical Distribution Center", "Abandoned Human Factory",
+            "Civic School", "Medical Distribution Center", "Abandoned Human Factory",
             "Salon of Cel Varo", "Dream Layer",
         ]
         return {n: {"desc": n} for n in names}
@@ -272,12 +275,12 @@ class Game:
             "revolution_readiness_tab": "Compares movement pressure to state resistance before launch.",
             "Undergrid": "Dense lower-class district where most survival politics begin.",
             "Link Clinic": "Facility where people neural-link to AI for income at health/memory risk.",
-            "Black-Market Printroom": "Illegal media and forgery hub for propaganda and rumor operations.",
+            "Public Print Station": "Open-access print/media cooperative for propaganda, messaging, and rumor contests.",
             "Public Allocation Hall": "Bureaucratic rationing center for food, housing, and aid disputes.",
             "Custodian Promenade": "Elite district of the Custodian class that privately owns AI infrastructure.",
             "AI Maintenance Spire": "Critical technical tower where technicians keep automated systems running.",
             "Police Civic Safety Office": "Security and intelligence bureaucracy managing surveillance and order.",
-            "Illegal School": "Underground education network building ideology, literacy, and civic culture.",
+            "Civic School": "Community education network building ideology, literacy, and civic culture in the open democratic sphere.",
             "Medical Distribution Center": "Node for medicine logistics and care continuity.",
             "Abandoned Human Factory": "Symbolic old labor site used for organizing, memory, and escalation.",
             "Salon of Cel Varo": "Elite salon where custodians, reformists, and brokers negotiate narratives.",
@@ -380,7 +383,8 @@ class Game:
 
         row4 = tk.Frame(panels, bg="#121a2a")
         row4.pack(fill="x", pady=2)
-        tk.Button(row4, text="Revolution Readiness", command=self.show_revolution_readiness).pack(side="left", fill="x", expand=True)
+        self.revolution_button = tk.Button(row4, text="Revolution Readiness", command=self.show_revolution_readiness)
+        self.revolution_button.pack(side="left", fill="x", expand=True)
         tk.Button(row4, text="?", command=lambda: self.show_help("revolution_readiness_tab"), bg="#4f5f80", fg="white", width=3).pack(side="left", padx=3)
         tk.Button(panels, text="?", command=lambda: self.show_help("panels"), bg="#4f5f80", fg="white", width=3).pack(anchor="e", pady=2)
 
@@ -403,7 +407,7 @@ class Game:
             {"name":"Linked refusal wave","text":"Linked workers coordinate mass refusal beyond expectations.","effects":{"pressure":5,"ai_infra_access":-2,"food_reserves":-2}},
             {"name":"Technician strike threat","text":"Technicians demand protection guarantees.","effects":{"technical_cells":2,"internal_unity":-2,"ai_infra_access":2}},
             {"name":"Maintenance route leak","text":"Former servants reveal hidden maintenance tunnels.","effects":{"ai_infra_access":4,"pressure":2}},
-            {"name":"School assembly surge","text":"Illegal School assemblies strengthen civic legitimacy.","effects":{"legitimacy":4,"civilian_trust":3,"moderate_pressure":2}},
+            {"name":"School assembly surge","text":"Civic School assemblies strengthen civic legitimacy.","effects":{"legitimacy":4,"civilian_trust":3,"moderate_pressure":2}},
             {"name":"Factory becomes symbol","text":"The old factory becomes a mass coordination hub.","effects":{"pressure":3,"revolutionary_morale":3}},
             {"name":"Energy yard instability","text":"Switching yard failsafe alarms trigger citywide panic.","effects":{"infrastructure_damage":4,"civilian_fear":4,"pressure":1}},
             {"name":"Captured ally broadcast","text":"A captured ally appears in coercive broadcast propaganda.","effects":{"revolutionary_morale":-4,"betrayal_risk":3}},
@@ -441,9 +445,9 @@ class Game:
         ws.pressure=clamp(ws.revolutionary_members//3 + ws.radical_pressure//2 + ws.propaganda_reach//6 + ws.ai_infra_access//5,0,100)
         ws.legitimacy=clamp(s.legitimacy + ws.public_sympathy//4 - ws.violence_level//6,0,100)
         ws.momentum=clamp(ws.pressure + ws.revolutionary_morale//4 - ws.custodian_morale//5,0,100)
-        zone_names=["Undergrid","Link Clinic Network","Public Allocation Hall","AI Maintenance Spire","Medical Distribution Center","Custodian Promenade","Police Civic Safety Office","Black-Market Printroom","Illegal School","Abandoned Human Factory","Energy Switching Yard","Dream Layer / AI Substrate"]
+        zone_names=["Undergrid","Link Clinic Network","Public Allocation Hall","AI Maintenance Spire","Medical Distribution Center","Custodian Promenade","Police Civic Safety Office","Public Print Station","Civic School","Abandoned Human Factory","Energy Switching Yard","Dream Layer / AI Substrate"]
         for zn in zone_names:
-            p=clamp(20 + ws.pressure//4 + (8 if zn in ["Undergrid","Black-Market Printroom","Illegal School"] else 0),0,90)
+            p=clamp(20 + ws.pressure//4 + (8 if zn in ["Undergrid","Public Print Station","Civic School"] else 0),0,90)
             c=clamp(70 - p + (8 if zn in ["Custodian Promenade","Police Civic Safety Office"] else 0),5,95)
             pol=clamp(ws.police_cohesion//2 + (10 if zn=="Police Civic Safety Office" else 0),0,95)
             civ=clamp(45 + ws.public_sympathy//5 - ws.violence_level//8,5,95)
@@ -461,8 +465,15 @@ class Game:
             return
         self.war_state=self._init_war_from_preparation()
         self.state.phase=3
+        self.state.flags["war_start_week"] = self.state.week
+        self.update_phase_ui()
         self.log("War Phase begins: allies commit, hesitators stall, and rivals test your command.")
         self.war_week_screen()
+
+    def update_phase_ui(self) -> None:
+        if hasattr(self, "revolution_button"):
+            active_war = bool(self.war_state and self.war_state.active)
+            self.revolution_button.configure(state="disabled" if active_war else "normal")
 
     def war_week_screen(self) -> None:
         ws=self.war_state
@@ -571,12 +582,16 @@ class Game:
         avg_ctrl=sum(z.player_control for z in ws.zones.values())/max(1,len(ws.zones))
         if ws.week>=6 and avg_ctrl>58 and ws.custodian_morale<35 and ws.police_cohesion<40:
             self.state.flags['war_outcome']='Clear revolutionary victory' if ws.legitimacy>45 else 'Damaged victory'
+            self.state.flags['war_weeks'] = ws.week
+            self.state.flags['war_casualties_points'] = ws.casualties
             ws.active=False
             self.log(f"War outcome: {self.state.flags['war_outcome']}.")
             self.set_ending(self.state.flags['war_outcome'])
             return
         if ws.week>=6 and ws.negotiation_leverage>55 and ws.pressure>35 and ws.legitimacy>35 and ws.custodian_morale<55:
             self.state.flags['war_outcome']='Negotiated transition'
+            self.state.flags['war_weeks'] = ws.week
+            self.state.flags['war_casualties_points'] = ws.casualties
             ws.active=False
             self.log("War outcome: Negotiated transition.")
             self.set_ending("Negotiated transition")
@@ -588,6 +603,8 @@ class Game:
                 self.set_ending('Stalled conflict')
             else:
                 self.state.flags['war_outcome']='Split government'
+                self.state.flags['war_weeks'] = ws.week
+                self.state.flags['war_casualties_points'] = ws.casualties
                 ws.active=False
                 self.log('War outcome: Split government.')
                 self.set_ending('Split government')
@@ -597,7 +614,7 @@ class Game:
     def show_help(self, topic: str) -> None:
         if topic == "general":
             message = (
-                "This game combines weekly strategy + branching narrative.\n"
+                "This game combines weekly strategy + branching narrative in a formal representative democracy shaped by capitalist inequality.\n"
                 "Use the Encyclopedia button for world terms, factions, and locations.\n"
                 "You usually get 3 actions per week; End Week advances systemic pressure."
             )
@@ -831,10 +848,13 @@ class Game:
 
     def main_week_screen(self) -> None:
         self.show_console_view()
+        self.update_phase_ui()
         self.refresh_stats()
         self.clear_choices()
         no_actions = self.state.actions_left <= 0
         lock_msg = "no actions left this week" if no_actions else None
+        if self.war_state and self.war_state.active:
+            lock_msg = "war phase active"
         self.add_choice("Visit location", self.show_map, lock_msg)
         self.add_choice("Character conversation", self.character_menu, lock_msg)
         self.add_choice("Propaganda action", self.propaganda_menu, lock_msg)
@@ -851,18 +871,18 @@ class Game:
         coords = {
             "Undergrid": (130, 430),
             "Link Clinic": (260, 450),
-            "Black-Market Printroom": (380, 430),
+            "Public Print Station": (380, 430),
             "Public Allocation Hall": (520, 420),
             "Custodian Promenade": (720, 170),
             "AI Maintenance Spire": (600, 250),
             "Police Civic Safety Office": (520, 300),
-            "Illegal School": (300, 330),
+            "Civic School": (300, 330),
             "Medical Distribution Center": (430, 300),
             "Abandoned Human Factory": (170, 320),
             "Salon of Cel Varo": (760, 260),
             "Dream Layer": (700, 470),
         }
-        roads = [("Undergrid", "Public Allocation Hall"), ("Public Allocation Hall", "Custodian Promenade"), ("Undergrid", "Abandoned Human Factory"), ("AI Maintenance Spire", "Custodian Promenade"), ("Medical Distribution Center", "Police Civic Safety Office"), ("Illegal School", "Undergrid"), ("Salon of Cel Varo", "Custodian Promenade")]
+        roads = [("Undergrid", "Public Allocation Hall"), ("Public Allocation Hall", "Custodian Promenade"), ("Undergrid", "Abandoned Human Factory"), ("AI Maintenance Spire", "Custodian Promenade"), ("Medical Distribution Center", "Police Civic Safety Office"), ("Civic School", "Undergrid"), ("Salon of Cel Varo", "Custodian Promenade")]
         for a, b in roads:
             ax, ay = coords[a]
             bx, by = coords[b]
@@ -896,12 +916,12 @@ class Game:
         fx = {
             "Undergrid": {"worker_support": 4, "money": -2, "food_security": 4},
             "Link Clinic": {"money": 14, "health": -6, "memory_integrity": -5, "neural_stability": -8, "ai_uptime": 1},
-            "Black-Market Printroom": {"movement_funding": 10, "police_suspicion": 6, "propaganda_reach": 6},
+            "Public Print Station": {"movement_funding": 10, "police_suspicion": 6, "propaganda_reach": 6},
             "Public Allocation Hall": {"public_reputation": 4, "food_security": 5, "housing_security": 3, "public_unrest": 2},
             "Custodian Promenade": {"elite_sympathy": 6, "custodian_reputation": 5, "money": -8},
             "AI Maintenance Spire": {"technical_skill": 4, "technician_support": 5, "infrastructure_access": 5},
             "Police Civic Safety Office": {"police_suspicion": -8, "operational_secrecy": 2, "public_reputation": -2},
-            "Illegal School": {"legitimacy": 6, "public_sympathy": 6, "message_discipline": 4},
+            "Civic School": {"legitimacy": 6, "public_sympathy": 6, "message_discipline": 4},
             "Medical Distribution Center": {"medical_network_access": 8, "health": 5, "public_sympathy": 4},
             "Abandoned Human Factory": {"membership": 8, "radicalization": 5, "violence_level": 3},
             "Salon of Cel Varo": {"elite_sympathy": 10, "custodian_reputation": 8, "public_reputation": 3},
@@ -918,15 +938,36 @@ class Game:
     def character_menu(self) -> None:
         self.clear_choices()
         for n, c in self.characters.items():
-            self.add_choice(f"{n} ({c.class_background}) rel={c.relationship} trust={c.trust}", lambda name=n: self.talk(name))
+            side = self.character_side(c)
+            locked = None
+            if self.war_state and self.war_state.active and side == "custodian_loyalist":
+                locked = "hostile during war"
+            self.add_choice(
+                f"{n} [{side}] ({c.class_background}) rel={c.relationship} trust={c.trust}",
+                lambda name=n: self.talk(name),
+                locked,
+            )
         self.add_choice("Back", self.main_week_screen)
+
+    def character_side(self, c: Character) -> str:
+        if self.war_state and self.war_state.active:
+            if c.class_background in {"custodian heir", "custodian owner", "custodian security consultant"} and c.relationship < 20:
+                return "custodian_loyalist"
+            if c.class_background in {"police"} and c.trust < 10:
+                return "state_aligned"
+            if c.relationship > 35 or c.trust > 20:
+                return "revolutionary_aligned"
+            return "fence_sitter"
+        return "civilian"
 
     def talk(self, name: str) -> None:
         c = self.characters[name]
-        if "custodian" in c.class_background and self.state.location != "Custodian Promenade":
-            self.log("You can only speak with custodian contacts while physically in the Custodian Promenade.")
-            self.main_week_screen()
-            return
+        if self.war_state and self.war_state.active:
+            side = self.character_side(c)
+            if side == "custodian_loyalist":
+                self.log(f"{name} refuses a direct conversation during open conflict.")
+                self.main_week_screen()
+                return
         if not self.spend_action():
             self.main_week_screen()
             return
@@ -1083,6 +1124,9 @@ class Game:
         messagebox.showinfo("Faction Dashboard", txt)
 
     def show_revolution_readiness(self) -> None:
+        if self.war_state and self.war_state.active:
+            messagebox.showinfo("Revolution Readiness", "War phase is already active. Revolution escalation cannot be triggered again.")
+            return
         s = self.state
         ready = s.membership > 55 and s.movement_funding > 80 and s.worker_support > 60 and s.public_unrest > 50
         txt = (
@@ -1115,6 +1159,7 @@ class Game:
 
     def governance_choice(self, model: str) -> None:
         s = self.state
+        war_outcome = s.flags.get("war_outcome", "")
         if war_outcome == "Damaged victory":
             self.apply_effects({"medical_availability": -8, "food_production": -8, "trust_in_player": -6})
         elif war_outcome == "Negotiated transition":
@@ -1153,6 +1198,21 @@ class Game:
     def build_epilogue(self, ending: str) -> str:
         s = self.state
         lines = [f"Outcome: {ending}", f"Weeks survived: {s.week}", f"AI uptime: {s.ai_uptime}", f"Public trust: {s.trust_in_player}"]
+
+        war_start_week = int(s.flags.get("war_start_week", s.week))
+        war_weeks = int(s.flags.get("war_weeks", 0))
+        prep_weeks = max(0, war_start_week - 1)
+        war_deaths = int(s.flags.get("war_casualties_points", 0)) * WAR_CASUALTY_UNIT
+        baseline_linking_deaths = REVOLUTION_HORIZON_WEEKS * LINKING_DEATHS_PER_WEEK
+        lived_linking_deaths = (prep_weeks * LINKING_DEATHS_PER_WEEK) + war_deaths
+        estimated_saved = baseline_linking_deaths - lived_linking_deaths
+        lines.append(
+            f"Death Tally -> Linking baseline (40w): {baseline_linking_deaths:,}; "
+            f"Linking deaths before war ({prep_weeks}w): {prep_weeks * LINKING_DEATHS_PER_WEEK:,}; "
+            f"War deaths: {war_deaths:,}."
+        )
+        lines.append(f"Estimated lives saved vs baseline: {estimated_saved:,}.")
+
         for n, c in self.characters.items():
             fate = "survives" if c.alive else "dies"
             tone = "ally" if c.relationship > 30 else "opponent" if c.relationship < -20 else "ambivalent"
@@ -1166,6 +1226,19 @@ class Game:
                 return
         self.state.week += 1
         self.state.actions_left = 3
+        peaceful = bool(self.state.flags.get("peaceful_propaganda_used_this_week"))
+        non_peaceful = bool(self.state.flags.get("non_peaceful_propaganda_used_this_week"))
+        if peaceful and not non_peaceful:
+            self.state.flags["peaceful_propaganda_streak_weeks"] = int(
+                self.state.flags.get("peaceful_propaganda_streak_weeks", 0)
+            ) + 1
+        else:
+            self.state.flags["peaceful_propaganda_streak_weeks"] = 0
+        self.state.flags["peaceful_propaganda_used_this_week"] = False
+        self.state.flags["non_peaceful_propaganda_used_this_week"] = False
+        if int(self.state.flags.get("peaceful_propaganda_streak_weeks", 0)) >= 40:
+            self.set_ending("Peaceful electoral transition: anti-linking candidate elected")
+            return
         self._apply_weekly_pressure()
         self._progress_arcs()
         self.refresh_stats()
