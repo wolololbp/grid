@@ -321,6 +321,7 @@ class Game:
         toolbar.pack(side="right")
         for lbl, cmd in [("Save", self.save), ("Load", self.load), ("Reset", self.reset)]:
             tk.Button(toolbar, text=lbl, command=cmd, bg="#314668", fg="white").pack(side="left", padx=4)
+        tk.Button(toolbar, text="Cheats", command=self.open_cheat_console, bg="#6a4a2f", fg="white").pack(side="left", padx=4)
         tk.Button(toolbar, text="Encyclopedia", command=self.show_encyclopedia, bg="#2a5a4a", fg="white").pack(side="left", padx=4)
         tk.Button(toolbar, text="?", command=lambda: self.show_help("general"), bg="#4f5f80", fg="white", width=2).pack(side="left", padx=4)
 
@@ -585,6 +586,88 @@ class Game:
         else:
             message = self.lexicon.get(topic, f"No encyclopedia entry found for '{topic}'.")
         messagebox.showinfo(f"Help: {topic}", message)
+
+    def open_cheat_console(self) -> None:
+        win = tk.Toplevel(self.root)
+        win.title("Presentation Cheat Console")
+        win.geometry("520x260")
+        tk.Label(win, text="Enter cheat code:", font=("Helvetica", 10, "bold")).pack(pady=8)
+        entry = tk.Entry(win, width=48)
+        entry.pack(pady=6)
+        tk.Label(
+            win,
+            text=(
+                "Codes: FAST_PREP, FORCE_WAR, WIN_WAR, FORCE_GOV, MAX_ALL,\n"
+                "CALM_CITY, CHAOS_CITY, MONEY_DROP, SPEEDRUN"
+            ),
+            justify="left",
+            fg="#cfe2ff",
+            bg="#1c2538",
+            padx=8,
+            pady=8,
+        ).pack(pady=6)
+
+        def run_code() -> None:
+            code = entry.get().strip().upper()
+            ok, msg = self.apply_cheat(code)
+            messagebox.showinfo("Cheat", msg)
+            if ok:
+                self.refresh_stats()
+                self.main_week_screen()
+
+        tk.Button(win, text="Apply", command=run_code, bg="#35557e", fg="white").pack(pady=8)
+
+    def apply_cheat(self, code: str) -> Tuple[bool, str]:
+        s = self.state
+        if code == "FAST_PREP":
+            self.apply_effects({
+                "membership": 60, "movement_funding": 120, "worker_support": 65, "public_unrest": 55,
+                "technician_support": 45, "elite_sympathy": 35, "infrastructure_access": 30,
+                "food_network_access": 30, "medical_network_access": 30, "operational_secrecy": 70,
+                "legitimacy": 55, "public_sympathy": 55, "money": 120,
+            })
+            return True, "FAST_PREP applied: revolution readiness dramatically increased."
+        if code == "FORCE_WAR":
+            self.start_war_phase()
+            return True, "FORCE_WAR applied: war phase started immediately."
+        if code == "WIN_WAR":
+            if not self.war_state or not self.war_state.active:
+                return False, "WIN_WAR failed: war phase is not active."
+            ws = self.war_state
+            ws.pressure = 90
+            ws.legitimacy = 72
+            ws.momentum = 88
+            ws.custodian_morale = 18
+            ws.police_cohesion = 22
+            for z in ws.zones.values():
+                z.player_control = 75
+                z.custodian_control = 15
+            self.resolve_war_week()
+            return True, "WIN_WAR applied: conflict pushed toward immediate victory path."
+        if code == "FORCE_GOV":
+            self.state.flags["war_outcome"] = "Clear revolutionary victory"
+            self.governance_screen()
+            return True, "FORCE_GOV applied: jumped to governance phase."
+        if code == "MAX_ALL":
+            for k in vars(s):
+                if isinstance(getattr(s, k), int):
+                    setattr(s, k, 95)
+            s.actions_left = 3
+            return True, "MAX_ALL applied: most numeric stats set to high values."
+        if code == "CALM_CITY":
+            self.apply_effects({"public_unrest": -40, "police_suspicion": -35, "stress": -25, "health": 20})
+            return True, "CALM_CITY applied: unrest and pressure sharply reduced."
+        if code == "CHAOS_CITY":
+            self.apply_effects({"public_unrest": 40, "police_suspicion": 25, "radicalization": 30, "violence_level": 25})
+            return True, "CHAOS_CITY applied: escalation pressure and instability increased."
+        if code == "MONEY_DROP":
+            self.apply_effects({"money": 150, "movement_funding": 90})
+            return True, "MONEY_DROP applied: large funding injection granted."
+        if code == "SPEEDRUN":
+            self.apply_effects({"membership": 50, "movement_funding": 100, "worker_support": 55, "public_unrest": 50, "technician_support": 40, "legitimacy": 50})
+            self.state.week = max(self.state.week, 18)
+            return True, "SPEEDRUN applied: advanced campaign to late-organization conditions."
+        return False, f"Unknown code: {code}"
 
     def show_encyclopedia(self) -> None:
         win = tk.Toplevel(self.root)
