@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ashes & Circuits: data-driven graphical narrative simulation."""
+"""GRID Final Project Game: data-driven graphical narrative simulation."""
 from __future__ import annotations
 
 import json
@@ -168,7 +168,7 @@ class WarState:
 class Game:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("Ashes & Circuits")
+        self.root.title("GRID Final Project Game")
         self.root.geometry("1360x860")
         self.rng = random.Random(7)
         self.state = GameState()
@@ -318,7 +318,7 @@ class Game:
     def _build_ui(self) -> None:
         top = tk.Frame(self.root, bg="#0d1320")
         top.pack(fill="x")
-        tk.Label(top, text="Ashes & Circuits", font=("Helvetica", 18, "bold"), fg="white", bg="#0d1320").pack(side="left", padx=12, pady=8)
+        tk.Label(top, text="GRID Final Project Game", font=("Helvetica", 18, "bold"), fg="white", bg="#0d1320").pack(side="left", padx=12, pady=8)
 
         toolbar = tk.Frame(top, bg="#0d1320")
         toolbar.pack(side="right")
@@ -459,6 +459,10 @@ class Game:
         return ws
 
     def start_war_phase(self) -> None:
+        if self.war_state and self.war_state.active:
+            self.log("War phase is already active. Returning to the current war instance.")
+            self.war_week_screen()
+            return
         self.war_state=self._init_war_from_preparation()
         self.state.phase=3
         self.state.flags["war_start_week"] = self.state.week
@@ -543,6 +547,13 @@ class Game:
         ws.log.append(event['name']+": "+event['text'])
         for k,v in event['effects'].items():
             setattr(ws,k,clamp(getattr(ws,k)+v,-100,200))
+        if self.rng.random() < ws.betrayal_risk / 100:
+            betrayal_loss = self.rng.randint(2, 6)
+            ws.internal_unity = clamp(ws.internal_unity - betrayal_loss, 0, 100)
+            ws.revolutionary_morale = clamp(ws.revolutionary_morale - betrayal_loss, 0, 100)
+            ws.safehouses = clamp(ws.safehouses - 1, 0, 200)
+            ws.casualties = clamp(ws.casualties + self.rng.randint(1, 3), 0, 200)
+            ws.log.append("Betrayal during the war: an exposed channel costs lives and fractures trust.")
         # zone shifts from pressure/legitimacy vs enemy morale/cohesion
         for z in ws.zones.values():
             swing=(ws.pressure//15 + ws.public_sympathy//20 + ws.ai_infra_access//25) - (ws.police_cohesion//20 + ws.custodian_morale//20)
@@ -568,8 +579,8 @@ class Game:
             self.state.flags['war_weeks'] = ws.week
             self.state.flags['war_casualties_points'] = ws.casualties
             ws.active=False
-            self.log(f"War outcome: {self.state.flags['war_outcome']}. Transitioning to governance.")
-            self.governance_screen()
+            self.log(f"War outcome: {self.state.flags['war_outcome']}.")
+            self.set_ending(self.state.flags['war_outcome'])
             return
         if ws.week>=6 and ws.negotiation_leverage>55 and ws.pressure>35 and ws.legitimacy>35 and ws.custodian_morale<55:
             self.state.flags['war_outcome']='Negotiated transition'
@@ -577,7 +588,7 @@ class Game:
             self.state.flags['war_casualties_points'] = ws.casualties
             ws.active=False
             self.log("War outcome: Negotiated transition.")
-            self.governance_screen()
+            self.set_ending("Negotiated transition")
             return
         if ws.week>=ws.max_weeks:
             if ws.momentum<35:
@@ -590,7 +601,7 @@ class Game:
                 self.state.flags['war_casualties_points'] = ws.casualties
                 ws.active=False
                 self.log('War outcome: Split government.')
-                self.governance_screen()
+                self.set_ending('Split government')
             return
         self.war_week_screen()
 
@@ -671,8 +682,8 @@ class Game:
             return True, "WIN_WAR applied: conflict pushed toward immediate victory path."
         if code == "FORCE_GOV":
             self.state.flags["war_outcome"] = "Clear revolutionary victory"
-            self.governance_screen()
-            return True, "FORCE_GOV applied: jumped to governance phase."
+            self.set_ending("Clear revolutionary victory")
+            return True, "FORCE_GOV applied: ended the game immediately."
         if code == "MAX_ALL":
             for k in vars(s):
                 if isinstance(getattr(s, k), int):
