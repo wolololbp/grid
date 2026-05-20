@@ -1203,15 +1203,19 @@ class Game:
         war_weeks = int(s.flags.get("war_weeks", 0))
         prep_weeks = max(0, war_start_week - 1)
         war_deaths = int(s.flags.get("war_casualties_points", 0)) * WAR_CASUALTY_UNIT
+
         baseline_linking_deaths = REVOLUTION_HORIZON_WEEKS * LINKING_DEATHS_PER_WEEK
-        lived_linking_deaths = (prep_weeks * LINKING_DEATHS_PER_WEEK) + war_deaths
-        estimated_saved = baseline_linking_deaths - lived_linking_deaths
+        prep_linking_deaths = prep_weeks * LINKING_DEATHS_PER_WEEK
+        revolution_deaths_total = prep_linking_deaths + war_deaths
+        estimated_saved = baseline_linking_deaths - revolution_deaths_total
+
+        lines.append(f"War length: {war_weeks} weeks after {prep_weeks} prep weeks.")
+        lines.append(f"Deaths from brain-linking (baseline 40 weeks): {baseline_linking_deaths:,}.")
+        lines.append(f"Deaths during revolution path: {revolution_deaths_total:,} (linking before war: {prep_linking_deaths:,}; war: {war_deaths:,}).")
         lines.append(
-            f"Death Tally -> Linking baseline (40w): {baseline_linking_deaths:,}; "
-            f"Linking deaths before war ({prep_weeks}w): {prep_weeks * LINKING_DEATHS_PER_WEEK:,}; "
-            f"War deaths: {war_deaths:,}."
+            "People saved = (40 weeks × 3,000) - ((prep weeks × 3,000) + war deaths)"
+            f" = {estimated_saved:,}."
         )
-        lines.append(f"Estimated lives saved vs baseline: {estimated_saved:,}.")
 
         for n, c in self.characters.items():
             fate = "survives" if c.alive else "dies"
