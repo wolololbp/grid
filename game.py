@@ -1129,12 +1129,62 @@ class Game:
             return
         s = self.state
         ready = s.membership > 55 and s.movement_funding > 80 and s.worker_support > 60 and s.public_unrest > 50
-        txt = (
-            f"Membership {s.membership}/55\nFunding {s.movement_funding}/80\nWorker support {s.worker_support}/60\n"
-            f"Public unrest {s.public_unrest}/50\nTechnician support {s.technician_support}/40\n"
-            f"Police suspicion {s.police_suspicion} (lower safer)\n\nReady: {'YES' if ready else 'NO'}"
-        )
-        if messagebox.askyesno("Revolution Readiness", txt + "\n\nAttempt transition now?"):
+        stat_hints = {
+            "Membership": "Recruit in abandoned human factory.",
+            "Funding": "Run operations and secure resource caches.",
+            "Worker support": "Complete worker-focused actions and protections.",
+            "Public unrest": "Expose custodian abuses and spread agitation.",
+            "Technician support": "Win over specialists through tech and safety choices.",
+            "Police suspicion": "Use low-profile tactics and avoid noisy crackdowns.",
+        }
+        stats = [
+            ("Membership", f"{s.membership}/55"),
+            ("Funding", f"{s.movement_funding}/80"),
+            ("Worker support", f"{s.worker_support}/60"),
+            ("Public unrest", f"{s.public_unrest}/50"),
+            ("Technician support", f"{s.technician_support}/40"),
+            ("Police suspicion", f"{s.police_suspicion} (lower safer)"),
+        ]
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Revolution Readiness")
+        dialog.configure(bg="#0f1628")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        tk.Label(dialog, text="Revolution Readiness", bg="#0f1628", fg="#f2f7ff", font=("Helvetica", 13, "bold")).grid(row=0, column=0, columnspan=3, padx=12, pady=(12, 8), sticky="w")
+        for i, (name, value) in enumerate(stats, start=1):
+            tk.Label(dialog, text=f"{name}:", bg="#0f1628", fg="#dbe8ff", anchor="w").grid(row=i, column=0, padx=(12, 6), pady=3, sticky="w")
+            tk.Label(dialog, text=value, bg="#0f1628", fg="#f2f7ff", anchor="w").grid(row=i, column=1, padx=(0, 6), pady=3, sticky="w")
+            tk.Button(
+                dialog,
+                text="?",
+                width=2,
+                bg="#4f5f80",
+                fg="white",
+                command=lambda key=name: messagebox.showinfo(f"{key} hint", stat_hints[key], parent=dialog),
+            ).grid(row=i, column=2, padx=(0, 12), pady=3, sticky="e")
+
+        tk.Label(
+            dialog,
+            text=f"Ready: {'YES' if ready else 'NO'}",
+            bg="#0f1628",
+            fg="#9be37f" if ready else "#f3c16d",
+            font=("Helvetica", 11, "bold"),
+        ).grid(row=len(stats) + 1, column=0, columnspan=3, padx=12, pady=(10, 8), sticky="w")
+
+        decision = {"attempt": False}
+
+        def close_with(choice: bool) -> None:
+            decision["attempt"] = choice
+            dialog.destroy()
+
+        btn_row = len(stats) + 2
+        tk.Button(dialog, text="Attempt transition", command=lambda: close_with(True), bg="#3f7b4a", fg="white").grid(row=btn_row, column=0, padx=12, pady=(0, 12), sticky="w")
+        tk.Button(dialog, text="Cancel", command=lambda: close_with(False), bg="#6a4a4a", fg="white").grid(row=btn_row, column=2, padx=12, pady=(0, 12), sticky="e")
+        dialog.protocol("WM_DELETE_WINDOW", lambda: close_with(False))
+        dialog.wait_window()
+
+        if decision["attempt"]:
             self.attempt_revolution()
 
     def attempt_revolution(self) -> None:
