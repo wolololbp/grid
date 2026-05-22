@@ -510,7 +510,6 @@ class Game:
             self.add_choice("Minor: Negotiate ceasefire corridor", lambda: self.war_action('ceasefire',minor=True))
             self.add_choice("Minor: Brutal reprisals", lambda: self.war_action('reprisal',minor=True))
         self.add_choice("Resolve War Week", self.resolve_war_week)
-        self.add_choice("Back to Console", self.main_week_screen)
 
     def war_action(self, action: str, minor: bool=False) -> None:
         ws=self.war_state
