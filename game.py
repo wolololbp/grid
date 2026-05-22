@@ -1128,10 +1128,22 @@ class Game:
             return
         s = self.state
         ready = s.membership > 55 and s.movement_funding > 80 and s.worker_support > 60 and s.public_unrest > 50
+        stat_hints = {
+            "Membership": "Recruit in abandoned human factory.",
+            "Funding": "Run operations and secure resource caches.",
+            "Worker support": "Complete worker-focused actions and protections.",
+            "Public unrest": "Expose custodian abuses and spread agitation.",
+            "Technician support": "Win over specialists through tech and safety choices.",
+            "Police suspicion": "Use low-profile tactics and avoid noisy crackdowns.",
+        }
         txt = (
-            f"Membership {s.membership}/55\nFunding {s.movement_funding}/80\nWorker support {s.worker_support}/60\n"
-            f"Public unrest {s.public_unrest}/50\nTechnician support {s.technician_support}/40\n"
-            f"Police suspicion {s.police_suspicion} (lower safer)\n\nReady: {'YES' if ready else 'NO'}"
+            f"Membership: {s.membership}/55 (?) {stat_hints['Membership']}\n"
+            f"Funding: {s.movement_funding}/80 (?) {stat_hints['Funding']}\n"
+            f"Worker support: {s.worker_support}/60 (?) {stat_hints['Worker support']}\n"
+            f"Public unrest: {s.public_unrest}/50 (?) {stat_hints['Public unrest']}\n"
+            f"Technician support: {s.technician_support}/40 (?) {stat_hints['Technician support']}\n"
+            f"Police suspicion: {s.police_suspicion} (lower safer) (?) {stat_hints['Police suspicion']}\n\n"
+            f"Ready: {'YES' if ready else 'NO'}"
         )
         if messagebox.askyesno("Revolution Readiness", txt + "\n\nAttempt transition now?"):
             self.attempt_revolution()
